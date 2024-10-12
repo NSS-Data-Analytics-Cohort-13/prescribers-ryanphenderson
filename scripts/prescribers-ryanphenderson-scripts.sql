@@ -73,18 +73,20 @@
 	-- WHERE drug.opioid_drug_flag = 'Y'
 	-- GROUP BY prescriber.specialty_description
 	-- ORDER BY opioid_claims_percent DESC;
+
 --		Answer: Nurse Practicioner has the highest percentage of opioid claims, followed by Family Practice and Internal Medicine.
 
 -- 3. 
 --     a. Which drug (generic_name) had the highest total drug cost?
 	-- SELECT drug.generic_name
-	-- 	,	prescription.total_drug_cost::MONEY
+	-- 	,	SUM(prescription.total_drug_cost)::MONEY AS sum_total_cost
 	-- FROM prescription
 	-- 	INNER JOIN drug
 	-- 		USING (drug_name)
-	-- ORDER BY prescription.total_drug_cost DESC
+	-- GROUP BY drug.generic_name
+	-- ORDER BY sum_total_cost DESC
 	-- LIMIT 1;
---		Answer: Pirfenidone has the highest drug cost at $2,829,174.30
+--		Answer: INSULIN GLARGINE,HUM.REC.ANLOG at $104,264,066.35
 
 --     b. Which drug (generic_name) has the hightest total cost per day? **Bonus: Round your cost per day column to 2 decimal places. Google ROUND to see how this works.**
 	-- SELECT drug.generic_name
@@ -95,7 +97,15 @@
 	-- GROUP BY drug.generic_name
 	-- ORDER BY daily_drug_cost DESC
 	-- LIMIT 1;
-		-- Answer: Insulin has the highest cost per day at $71413.74
+		-- Answer: Insulin has the highest cost per day at $71413.74 << Incorrect
+	-- SELECT drug.generic_name
+	-- 	,	(SUM(prescription.total_drug_cost)/SUM(prescription.total_day_supply)) :: MONEY as daily_drug_cost
+	-- FROM prescription
+	-- 	INNER JOIN drug
+	-- 		USING (drug_name)
+	-- GROUP BY drug.generic_name
+	-- ORDER BY daily_drug_cost DESC
+--		Answer: C1 Esterase Inhibitor at $3,495.22
 
 -- 4. 
 --     a. For each drug in the drug table, return the drug name and then a column named 'drug_type' which says 'opioid' for drugs which have opioid_drug_flag = 'Y', says 'antibiotic' for those drugs which have antibiotic_drug_flag = 'Y', and says 'neither' for all other drugs. **Hint:** You may want to use a CASE expression for this. See https://www.postgresqltutorial.com/postgresql-tutorial/postgresql-case/ 
@@ -123,13 +133,20 @@
 
 -- 5. 
 --     a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
-	-- SELECT COUNT(cbsa)
+	-- SELECT DISTINCT fipscounty
 	-- FROM cbsa
-	-- WHERE cbsaname ILIKE '%TN';
-	-- 	Answer: 33
+	-- WHERE cbsaname ILIKE '%,%TN%'
+--	-- 	Answer: 56 << Incorrect, counts fipscounties outside of TN but with cbsanames including 'TN'
+
+	-- SELECT COUNT(*) 
+	-- FROM fips_county
+	-- 	INNER JOIN cbsa
+	-- 		ON fips_county.fipscounty = cbsa.fipscounty
+	-- WHERE fips_county.state = 'TN'
+--	-- Answer: 10 CBSAs in 42 fipscounties << Correct
 
 --     b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
-	-- SELECT cbsa.cbsaname
+	-- (SELECT cbsa.cbsaname
 	-- 	,	SUM(population.population) AS total_pop
 	-- FROM zip_fips
 	-- 	INNER JOIN cbsa
@@ -137,7 +154,19 @@
 	-- 	INNER JOIN population
 	-- 		USING (fipscounty)
 	-- GROUP BY cbsa.cbsaname
-	-- ORDER BY total_pop DESC;
+	-- ORDER BY total_pop DESC
+	-- LIMIT 1)
+	-- UNION
+	-- (SELECT cbsa.cbsaname
+	-- 	,	SUM(population.population) AS total_pop
+	-- FROM zip_fips
+	-- 	INNER JOIN cbsa
+	-- 		USING (fipscounty)
+	-- 	INNER JOIN population
+	-- 		USING (fipscounty)
+	-- GROUP BY cbsa.cbsaname
+	-- ORDER BY total_pop
+	-- LIMIT 1);
 --		Answer: Memphis, TN-MS-AR has the highest with 67870189. Morristown, TN has the lowest with 1163520.
 
 --     c. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
@@ -152,6 +181,7 @@
 	-- WHERE cbsa.cbsa IS NULL
 	-- ORDER BY population.population DESC
 	-- LIMIT 1;
+
 --		Answer: Sevier county has the highest population not included in a CBSA, at 95523.
 
 -- 6. 
@@ -187,10 +217,7 @@
 
 --     a. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Management) in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will only need to use the prescriber and drug tables since you don't need the claims numbers yet.
 	-- SELECT prescriber.npi
-	-- 	,	prescriber.specialty_description
-	-- 	,	prescriber.nppes_provider_city
 	-- 	,	drug.drug_name
-	-- 	,	drug.opioid_drug_flag
 	-- FROM prescriber
 	-- 	CROSS JOIN drug
 	-- WHERE prescriber.specialty_description = 'Pain Management'
@@ -212,6 +239,7 @@
 	-- GROUP BY prescriber.npi
 	-- 	,	drug.drug_name
 	-- ORDER BY prescriber.npi;
+	
 --     c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
 	-- SELECT prescriber.npi
 	-- 	,	drug.drug_name
