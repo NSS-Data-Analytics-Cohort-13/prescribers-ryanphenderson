@@ -55,9 +55,25 @@
 	-- 	LEFT JOIN prescription
 	-- 		USING (npi)
 	-- GROUP BY prescriber.specialty_description
-	-- HAVING COUNT(prescription.drug_name) = 0
+	-- HAVING COUNT(prescription.drug_name) = 0;
 
 --     d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
+	-- SELECT prescriber.specialty_description
+	-- 	,	ROUND((SUM(prescription.total_claim_count)/
+	-- 			(SELECT SUM(prescription.total_claim_count)
+	-- 			 FROM prescription
+	-- 			 INNER JOIN drug
+	-- 			 	USING (drug_name)
+	-- 			 WHERE drug.opioid_drug_flag = 'Y')*100),2) AS opioid_claims_percent
+	-- FROM prescriber
+	-- 	INNER JOIN prescription
+	-- 		USING(npi)
+	-- 	INNER JOIN drug
+	-- 		USING (drug_name)
+	-- WHERE drug.opioid_drug_flag = 'Y'
+	-- GROUP BY prescriber.specialty_description
+	-- ORDER BY opioid_claims_percent DESC;
+--		Answer: Nurse Practicioner has the highest percentage of opioid claims, followed by Family Practice and Internal Medicine.
 
 -- 3. 
 --     a. Which drug (generic_name) had the highest total drug cost?
@@ -89,7 +105,7 @@
 	-- 		WHEN drug.antibiotic_drug_flag = 'Y' THEN 'antibiotic'
 	-- 		ELSE 'neither'
 	-- 		END AS drug_type
-	-- FROM drug
+	-- FROM drug;
 
 --     b. Building off of the query you wrote for part a, determine whether more was spent (total_drug_cost) on opioids or on antibiotics. Hint: Format the total costs as MONEY for easier comparision.
 	-- SELECT SUM(prescription.total_drug_cost)::MONEY AS sum_total_cost
@@ -102,14 +118,14 @@
 	-- 	INNER JOIN drug
 	-- 		USING (drug_name)
 	-- GROUP BY drug_type
-	-- ORDER BY sum_total_cost DESC
+	-- ORDER BY sum_total_cost DESC;
 --		Answer: Opioids had more spent on them, by roughly 65 million dollars.
 
 -- 5. 
 --     a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
 	-- SELECT COUNT(cbsa)
 	-- FROM cbsa
-	-- WHERE cbsaname ILIKE '%TN'
+	-- WHERE cbsaname ILIKE '%TN';
 	-- 	Answer: 33
 
 --     b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
@@ -121,7 +137,7 @@
 	-- 	INNER JOIN population
 	-- 		USING (fipscounty)
 	-- GROUP BY cbsa.cbsaname
-	-- ORDER BY total_pop DESC
+	-- ORDER BY total_pop DESC;
 --		Answer: Memphis, TN-MS-AR has the highest with 67870189. Morristown, TN has the lowest with 1163520.
 
 --     c. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
@@ -143,7 +159,7 @@
 	-- SELECT prescription.drug_name
 	-- 	,	prescription.total_claim_count
 	-- FROM prescription
-	-- WHERE total_claim_count >= 3000
+	-- WHERE total_claim_count >= 3000;
 
 --     b. For each instance that you found in part a, add a column that indicates whether the drug is an opioid.
 	-- SELECT prescription.drug_name
@@ -152,7 +168,7 @@
 	-- FROM prescription
 	-- 	INNER JOIN drug
 	-- 		USING (drug_name)
-	-- WHERE total_claim_count >= 3000
+	-- WHERE total_claim_count >= 3000;
 
 --     c. Add another column to you answer from the previous part which gives the prescriber first and last name associated with each row.
 	-- SELECT prescriber.nppes_provider_first_name
@@ -165,12 +181,48 @@
 	-- 		USING (drug_name)
 	-- 	INNER JOIN prescriber
 	-- 		USING (npi)
-	-- WHERE total_claim_count >= 3000
+	-- WHERE total_claim_count >= 3000;
 
 -- 7. The goal of this exercise is to generate a full list of all pain management specialists in Nashville and the number of claims they had for each opioid. **Hint:** The results from all 3 parts will have 637 rows.
 
 --     a. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Management) in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will only need to use the prescriber and drug tables since you don't need the claims numbers yet.
-
+	-- SELECT prescriber.npi
+	-- 	,	prescriber.specialty_description
+	-- 	,	prescriber.nppes_provider_city
+	-- 	,	drug.drug_name
+	-- 	,	drug.opioid_drug_flag
+	-- FROM prescriber
+	-- 	CROSS JOIN drug
+	-- WHERE prescriber.specialty_description = 'Pain Management'
+	-- 	AND prescriber.nppes_provider_city = 'NASHVILLE'
+	-- 	AND drug.opioid_drug_flag = 'Y'
+	-- ORDER BY drug.drug_name;
+			
 --     b. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
-    
+	-- SELECT prescriber.npi
+	-- 	,	drug.drug_name
+	-- 	,	SUM(prescription.total_claim_count) AS sum_total_claims
+	-- FROM prescriber
+	-- 	CROSS JOIN drug
+	-- 	LEFT JOIN prescription
+	-- 		USING (drug_name)
+	-- WHERE prescriber.specialty_description = 'Pain Management'
+	-- 	AND prescriber.nppes_provider_city = 'NASHVILLE'
+	-- 	AND drug.opioid_drug_flag = 'Y'
+	-- GROUP BY prescriber.npi
+	-- 	,	drug.drug_name
+	-- ORDER BY prescriber.npi;
 --     c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
+	-- SELECT prescriber.npi
+	-- 	,	drug.drug_name
+	-- 	,	COALESCE(SUM(prescription.total_claim_count), 0) AS sum_total_claims
+	-- FROM prescriber
+	-- 	CROSS JOIN drug
+	-- 	LEFT JOIN prescription
+	-- 		USING (drug_name)
+	-- WHERE prescriber.specialty_description = 'Pain Management'
+	-- 	AND prescriber.nppes_provider_city = 'NASHVILLE'
+	-- 	AND drug.opioid_drug_flag = 'Y'
+	-- GROUP BY prescriber.npi
+	-- 	,	drug.drug_name
+	-- ORDER BY prescriber.npi;
